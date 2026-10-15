@@ -261,3 +261,42 @@ class SafetyEngine:
             return False, "Locked by active process (PermissionError)."
         except Exception as ex:
             return False, str(ex)
+
+    def permanently_delete(self, target_path: str, category: str = "file") -> Tuple[bool, str]:
+        """
+        Permanently and safely removes a file, directory, or registry key.
+        Checks all anti-corruption safety guardrails first.
+        """
+        if category == "registry" or target_path.startswith("HKCU") or target_path.startswith("HKLM"):
+            clean_key = target_path.split(" -> ")[0].strip()
+            hive = "HKCU" if clean_key.startswith("HKCU") else "HKLM"
+            sub = clean_key.split("\\", 1)[1] if "\\" in clean_key else ""
+            is_safe, reason = self.is_safe_registry_key(hive, sub)
+            if not is_safe:
+                return False, f"Safety Guardrail: {reason}"
+            try:
+                cmd = f'reg.exe delete "{clean_key}" /f'
+                res = subprocess.run(cmd, capture_output=True, text=True, shell=True, timeout=10)
+                if res.returncode == 0:
+                    return True, "Registry key removed successfully."
+                return False, res.stderr.strip() or "Registry delete command failed."
+            except Exception as e:
+                return False, str(e)
+
+        is_safe, reason = self.is_safe_path(target_path)
+        if not is_safe:
+            return False, f"Safety Guardrail: {reason}"
+
+        p = Path(self.normalize_path(target_path))
+        if not p.exists():
+            return True, "Target does not exist (already removed)."
+
+        try:
+            if p.is_dir():
+                shutil.rmtree(str(p), ignore_errors=False)
+                return True, "Directory removed successfully."
+            else:
+                p.unlink()
+                return True, "File removed successfully."
+        except (PermissionError, OSError) as e:
+            return False, f"File in use or access denied: {e}"

@@ -1,15 +1,15 @@
 """
-GhostPurge - Windows 11 Fluent Desktop Interface
-===============================================
-Implemented with CustomTkinter following Microsoft Fluent Design guidelines:
-Clean neutral slate palette, Segoe UI typography, high information density,
-collapsible scan log drawer, and granular safety inspection.
+Leftover-Cleaner - Windows 11 Fluent Desktop Interface
+======================================================
+Clean, intuitive, and simple interface for scanning and deleting leftover files,
+orphan application folders, and residual registry keys without complexity.
 """
 
 import sys
 import threading
 from typing import List, Dict, Optional, Callable
 from pathlib import Path
+from tkinter import messagebox
 
 try:
     import customtkinter as ctk
@@ -30,28 +30,30 @@ except ModuleNotFoundError:
 
 class GhostPurgeApp(ctk.CTk if ctk else object):
     """
-    Windows 11 Fluent GUI Application for GhostPurge.
+    Windows 11 Fluent GUI Application for Leftover-Cleaner.
     """
 
-    # Windows 11 Fluent Color Palette
     COLOR_BG_DARK = "#202020"
     COLOR_BG_LIGHT = "#F3F3F3"
     COLOR_SIDEBAR_DARK = "#181818"
     COLOR_SIDEBAR_LIGHT = "#E9E9E9"
     COLOR_CARD_DARK = "#2B2B2B"
     COLOR_CARD_LIGHT = "#FFFFFF"
-    COLOR_ACCENT = "#0067C0"       # Windows 11 Accent Blue
+    COLOR_ACCENT = "#0067C0"         # Windows Blue
     COLOR_ACCENT_HOVER = "#1877D2"
-    COLOR_SAFE = "#107C41"         # Windows Green
-    COLOR_REVIEW = "#B86200"       # Windows Amber / Caution
+    COLOR_DELETE = "#C42B1C"         # Windows Red for direct delete
+    COLOR_DELETE_HOVER = "#A82315"
+    COLOR_SAFE = "#107C41"           # Green
+    COLOR_REVIEW = "#B86200"         # Caution Amber
     COLOR_TEXT_MUTED = "#8A8A8A"
 
-    def __init__(self, dry_run_default: bool = True, skip_restore_point: bool = False):
+    def __init__(self, dry_run_default: bool = False, skip_restore_point: bool = False):
         if not ctk:
-            raise RuntimeError("CustomTkinter is required to launch the GhostPurge GUI.")
+            raise RuntimeError("CustomTkinter is required to launch the Leftover-Cleaner GUI.")
 
         super().__init__()
 
+        # Direct deletion enabled by default (dry-run can be toggled if user explicitly wants simulation)
         self.dry_run = dry_run_default
         self.skip_restore_point = skip_restore_point
         self.safety = SafetyEngine()
@@ -62,26 +64,26 @@ class GhostPurgeApp(ctk.CTk if ctk else object):
         self.scanned_items: List[ScanResultItem] = []
         self.selected_indices: set = set()
         self.is_scanning = False
-        self.active_tab = "all"  # "all", "orphan_dir", "registry", "cache"
+        self.active_tab = "all"
 
         # Window Setup
-        self.title("GhostPurge - Windows Safe Residual & Orphan Cleaner")
+        self.title("Leftover-Cleaner - Windows Safe Residual & Orphan Cleaner")
         self.geometry("1100x720")
-        self.minsize(980, 640)
+        self.minsize(960, 620)
         ctk.set_appearance_mode("Dark")
         ctk.set_default_color_theme("blue")
 
         self._build_layout()
 
     def _build_layout(self) -> None:
-        """Construct the sidebar, header, central workbench, and collapsible log console."""
+        """Construct sidebar, header action strip, item table, and log console."""
         self.grid_rowconfigure(0, weight=1)
         self.grid_columnconfigure(1, weight=1)
 
-        # 1. Left Sidebar Navigation
+        # 1. Sidebar Navigation
         self.sidebar_frame = ctk.CTkFrame(
             self,
-            width=240,
+            width=230,
             corner_radius=0,
             fg_color=(self.COLOR_SIDEBAR_LIGHT, self.COLOR_SIDEBAR_DARK),
         )
@@ -89,14 +91,14 @@ class GhostPurgeApp(ctk.CTk if ctk else object):
         self.sidebar_frame.grid_propagate(False)
         self._build_sidebar()
 
-        # 2. Main Content Viewport
+        # 2. Main Content
         self.main_frame = ctk.CTkFrame(
             self,
             corner_radius=0,
             fg_color=(self.COLOR_BG_LIGHT, self.COLOR_BG_DARK),
         )
         self.main_frame.grid(row=0, column=1, sticky="nsew", padx=0, pady=0)
-        self.main_frame.grid_rowconfigure(2, weight=1)
+        self.main_frame.grid_rowconfigure(3, weight=1)
         self.main_frame.grid_columnconfigure(0, weight=1)
 
         self._build_header_strip()
@@ -106,31 +108,31 @@ class GhostPurgeApp(ctk.CTk if ctk else object):
         self._build_log_drawer()
 
     def _build_sidebar(self) -> None:
-        """Windows 11 Fluent Sidebar Navigation."""
-        # Brand Wordmark
+        """Simple, focused navigation items."""
+        # Brand
         title_label = ctk.CTkLabel(
             self.sidebar_frame,
-            text="GhostPurge",
-            font=ctk.CTkFont(family="Segoe UI Variable Display", size=20, weight="bold"),
+            text="Leftover-Cleaner",
+            font=ctk.CTkFont(family="Segoe UI Variable Display", size=18, weight="bold"),
             anchor="w",
         )
-        title_label.pack(padx=24, pady=(24, 4), anchor="w")
+        title_label.pack(padx=20, pady=(20, 2), anchor="w")
 
         subtitle = ctk.CTkLabel(
             self.sidebar_frame,
-            text="Windows Safety Purge Engine",
+            text="Safe Residual Cleaner for Windows",
             font=ctk.CTkFont(family="Segoe UI", size=11),
             text_color=self.COLOR_TEXT_MUTED,
             anchor="w",
         )
-        subtitle.pack(padx=24, pady=(0, 24), anchor="w")
+        subtitle.pack(padx=20, pady=(0, 20), anchor="w")
 
-        # Navigation items
+        # Category buttons
         nav_items = [
             ("All Findings", "all"),
             ("Orphan Folders", "orphan_dir"),
-            ("Registry Residuals", "registry"),
-            ("System Cache & Temp", "cache"),
+            ("Registry Residues", "registry"),
+            ("Temporary Cache", "cache"),
         ]
 
         self.nav_buttons = {}
@@ -147,24 +149,24 @@ class GhostPurgeApp(ctk.CTk if ctk else object):
                 command=lambda t=tab_id: self._select_tab(t),
                 font=ctk.CTkFont(family="Segoe UI", size=13),
             )
-            btn.pack(padx=16, pady=3, fill="x")
+            btn.pack(padx=14, pady=3, fill="x")
             self.nav_buttons[tab_id] = btn
 
         self._highlight_active_nav("all")
 
-        # Sidebar footer: Safety Status & Toggle
+        # Footer toggles
         spacer = ctk.CTkLabel(self.sidebar_frame, text="")
         spacer.pack(expand=True, fill="both")
 
         self.dry_run_switch = ctk.CTkSwitch(
             self.sidebar_frame,
-            text="Dry-Run Mode (Preview Only)",
-            font=ctk.CTkFont(family="Segoe UI", size=12),
+            text="Simulation Only (Dry-Run)",
+            font=ctk.CTkFont(family="Segoe UI", size=11),
             command=self._on_toggle_dry_run,
         )
         if self.dry_run:
             self.dry_run_switch.select()
-        self.dry_run_switch.pack(padx=20, pady=(0, 8), anchor="w")
+        self.dry_run_switch.pack(padx=18, pady=(0, 10), anchor="w")
 
         theme_switch = ctk.CTkSegmentedButton(
             self.sidebar_frame,
@@ -173,45 +175,42 @@ class GhostPurgeApp(ctk.CTk if ctk else object):
             height=28,
         )
         theme_switch.set("Dark")
-        theme_switch.pack(padx=20, pady=(0, 20), fill="x")
+        theme_switch.pack(padx=18, pady=(0, 18), fill="x")
 
     def _build_header_strip(self) -> None:
-        """Top action bar with scan status and primary execution buttons."""
-        self.header_frame = ctk.CTkFrame(
-            self.main_frame,
-            fg_color="transparent",
-            height=54,
-        )
-        self.header_frame.grid(row=0, column=0, sticky="ew", padx=28, pady=(20, 10))
+        """Top action bar with prominent Scan and Delete buttons."""
+        self.header_frame = ctk.CTkFrame(self.main_frame, fg_color="transparent", height=50)
+        self.header_frame.grid(row=0, column=0, sticky="ew", padx=24, pady=(16, 8))
 
         self.status_label = ctk.CTkLabel(
             self.header_frame,
-            text="System Ready · Whitelist Guardrails Active",
-            font=ctk.CTkFont(family="Segoe UI", size=14, weight="normal"),
+            text="Ready · Safe System Protection Active",
+            font=ctk.CTkFont(family="Segoe UI", size=13),
             text_color=("black", "white"),
         )
         self.status_label.pack(side="left")
 
-        # Action Buttons
-        self.purge_button = ctk.CTkButton(
+        # Primary Delete Action Button (in prominent Windows Red)
+        self.delete_button = ctk.CTkButton(
             self.header_frame,
-            text="Execute Safe Purge",
-            fg_color=self.COLOR_ACCENT,
-            hover_color=self.COLOR_ACCENT_HOVER,
+            text="Delete Selected Files",
+            fg_color=self.COLOR_DELETE,
+            hover_color=self.COLOR_DELETE_HOVER,
             font=ctk.CTkFont(family="Segoe UI", size=13, weight="bold"),
             height=34,
             corner_radius=6,
             command=self._confirm_purge_execution,
         )
-        self.purge_button.pack(side="right", padx=(10, 0))
+        self.delete_button.pack(side="right", padx=(10, 0))
 
+        # Scan Button (in Windows Accent Blue)
         self.scan_button = ctk.CTkButton(
             self.header_frame,
-            text="Scan Residues",
-            fg_color=("#E0E0E0", "#333333"),
-            hover_color=("#D5D5D5", "#3D3D3D"),
-            text_color=("black", "white"),
-            font=ctk.CTkFont(family="Segoe UI", size=13),
+            text="Scan For Leftovers",
+            fg_color=self.COLOR_ACCENT,
+            hover_color=self.COLOR_ACCENT_HOVER,
+            text_color="white",
+            font=ctk.CTkFont(family="Segoe UI", size=13, weight="bold"),
             height=34,
             corner_radius=6,
             command=self._start_scan_thread,
@@ -219,7 +218,7 @@ class GhostPurgeApp(ctk.CTk if ctk else object):
         self.scan_button.pack(side="right")
 
     def _build_metric_overview(self) -> None:
-        """Metrics banner showing disk space reclaimable and item tallies."""
+        """Disk space reclaimed metric and item counters."""
         metrics_container = ctk.CTkFrame(
             self.main_frame,
             fg_color=(self.COLOR_CARD_LIGHT, self.COLOR_CARD_DARK),
@@ -227,43 +226,41 @@ class GhostPurgeApp(ctk.CTk if ctk else object):
             border_width=1,
             border_color=("#E0E0E0", "#383838"),
         )
-        metrics_container.grid(row=1, column=0, sticky="ew", padx=28, pady=(0, 14))
+        metrics_container.grid(row=1, column=0, sticky="ew", padx=24, pady=(0, 12))
 
-        # Reclaimable Space Card
         self.reclaim_label = ctk.CTkLabel(
             metrics_container,
             text="0.00 MB",
-            font=ctk.CTkFont(family="Segoe UI Variable Display", size=28, weight="bold"),
+            font=ctk.CTkFont(family="Segoe UI Variable Display", size=26, weight="bold"),
         )
-        self.reclaim_label.pack(side="left", padx=24, pady=16)
+        self.reclaim_label.pack(side="left", padx=20, pady=14)
 
         desc_label = ctk.CTkLabel(
             metrics_container,
-            text="Disk Space Reclaimable\nAcross safe orphan candidates",
-            font=ctk.CTkFont(family="Segoe UI", size=12),
+            text="Disk Space Reclaimable\nSelect files and click 'Delete Selected Files'",
+            font=ctk.CTkFont(family="Segoe UI", size=11),
             text_color=self.COLOR_TEXT_MUTED,
             justify="left",
         )
-        desc_label.pack(side="left", padx=(0, 32))
+        desc_label.pack(side="left", padx=(0, 24))
 
-        # Summary Counter Chips
         self.count_summary_label = ctk.CTkLabel(
             metrics_container,
-            text="0 Items Detected  ·  0 Orphan Folders  ·  0 Registry Keys  ·  0 Cache Targets",
+            text="0 Items Found",
             font=ctk.CTkFont(family="Segoe UI", size=12),
             text_color=self.COLOR_TEXT_MUTED,
         )
-        self.count_summary_label.pack(side="right", padx=24)
+        self.count_summary_label.pack(side="right", padx=20)
 
     def _build_table_controls(self) -> None:
-        """Filter bar and select all/none controls."""
+        """Selection buttons."""
         ctrl_frame = ctk.CTkFrame(self.main_frame, fg_color="transparent")
-        ctrl_frame.grid(row=2, column=0, sticky="ew", padx=28, pady=(0, 6))
+        ctrl_frame.grid(row=2, column=0, sticky="ew", padx=24, pady=(0, 6))
 
         self.select_all_btn = ctk.CTkButton(
             ctrl_frame,
-            text="Select All Safe",
-            width=110,
+            text="Select All (Safe)",
+            width=120,
             height=28,
             corner_radius=5,
             font=ctk.CTkFont(family="Segoe UI", size=12),
@@ -299,7 +296,7 @@ class GhostPurgeApp(ctk.CTk if ctk else object):
         self.table_filter_info.pack(side="right")
 
     def _build_item_treeview(self) -> None:
-        """Scrollable frame displaying detected items with checkboxes and confidence badges."""
+        """Scrollable list of scanned leftover candidates."""
         self.scroll_table = ctk.CTkScrollableFrame(
             self.main_frame,
             corner_radius=8,
@@ -307,44 +304,43 @@ class GhostPurgeApp(ctk.CTk if ctk else object):
             border_width=1,
             border_color=("#E0E0E0", "#383838"),
         )
-        self.scroll_table.grid(row=3, column=0, sticky="nsew", padx=28, pady=(0, 10))
+        self.scroll_table.grid(row=3, column=0, sticky="nsew", padx=24, pady=(0, 10))
         self.scroll_table.grid_columnconfigure(1, weight=1)
 
         self._render_empty_table_state()
 
     def _render_empty_table_state(self) -> None:
-        """Render clean guidance when no scan has taken place."""
         for child in self.scroll_table.winfo_children():
             child.destroy()
 
         empty_label = ctk.CTkLabel(
             self.scroll_table,
-            text="No residual items scanned yet.\nClick 'Scan Residues' to discover orphan application folders, residual keys, and junk.",
+            text="No residual items found yet.\nClick 'Scan For Leftovers' above to find leftover folders, files, and registry keys.",
             font=ctk.CTkFont(family="Segoe UI", size=13),
             text_color=self.COLOR_TEXT_MUTED,
             justify="center",
         )
-        empty_label.pack(pady=80)
+        empty_label.pack(pady=70)
 
     def _build_log_drawer(self) -> None:
-        """Collapsible console drawer showing active file paths and scanner events."""
+        """Activity console showing real-time scanning and deletion events."""
         self.drawer_frame = ctk.CTkFrame(
             self.main_frame,
-            height=120,
+            height=110,
             corner_radius=6,
             fg_color=(self.COLOR_SIDEBAR_LIGHT, self.COLOR_SIDEBAR_DARK),
             border_width=1,
             border_color=("#E0E0E0", "#383838"),
         )
-        self.drawer_frame.grid(row=4, column=0, sticky="ew", padx=28, pady=(0, 16))
+        self.drawer_frame.grid(row=4, column=0, sticky="ew", padx=24, pady=(0, 14))
         self.drawer_frame.grid_propagate(False)
 
-        drawer_header = ctk.CTkFrame(self.drawer_frame, fg_color="transparent", height=24)
-        drawer_header.pack(fill="x", padx=12, pady=(6, 2))
+        drawer_header = ctk.CTkFrame(self.drawer_frame, fg_color="transparent", height=22)
+        drawer_header.pack(fill="x", padx=10, pady=(4, 2))
 
         console_title = ctk.CTkLabel(
             drawer_header,
-            text="Scanning Log & Safety Inspection",
+            text="Activity & Deletion Log",
             font=ctk.CTkFont(family="Segoe UI", size=11, weight="bold"),
             text_color=self.COLOR_TEXT_MUTED,
         )
@@ -356,11 +352,10 @@ class GhostPurgeApp(ctk.CTk if ctk else object):
             corner_radius=4,
             fg_color="transparent",
         )
-        self.log_textbox.pack(fill="both", expand=True, padx=8, pady=(0, 6))
-        self.log_message("[System] GhostPurge initialized. Ready to perform safe dry-run inspection.")
+        self.log_textbox.pack(fill="both", expand=True, padx=6, pady=(0, 4))
+        self.log_message("[System] Leftover-Cleaner initialized. Click 'Scan For Leftovers' to begin.")
 
     def log_message(self, message: str) -> None:
-        """Append a message to the console drawer."""
         self.log_textbox.insert("end", f"{message}\n")
         self.log_textbox.see("end")
 
@@ -378,8 +373,8 @@ class GhostPurgeApp(ctk.CTk if ctk else object):
 
     def _on_toggle_dry_run(self) -> None:
         self.dry_run = self.dry_run_switch.get() == 1
-        status = "Dry-Run Preview (No files deleted)" if self.dry_run else "Active Purge (Files will be removed)"
-        self.log_message(f"[Config] Execution mode set: {status}")
+        status = "Simulation Only (No deletion)" if self.dry_run else "Active Permanent Deletion"
+        self.log_message(f"[Config] Mode changed to: {status}")
 
     def _start_scan_thread(self) -> None:
         if self.is_scanning:
@@ -387,14 +382,13 @@ class GhostPurgeApp(ctk.CTk if ctk else object):
 
         self.is_scanning = True
         self.scan_button.configure(state="disabled", text="Scanning...")
-        self.status_label.configure(text="Scanning file systems and registry hives...")
-        self.log_message("[Scanner] Starting full system scan...")
+        self.status_label.configure(text="Scanning AppData, ProgramData, and Registry hives...")
+        self.log_message("[Scanner] Starting full system leftover scan...")
 
         thread = threading.Thread(target=self._run_scan_worker, daemon=True)
         thread.start()
 
     def _run_scan_worker(self) -> None:
-        """Background thread worker for scanning."""
         def callback(msg: str):
             self.after(0, lambda m=msg: self.log_message(f"[*] {m}"))
 
@@ -413,9 +407,14 @@ class GhostPurgeApp(ctk.CTk if ctk else object):
 
     def _on_scan_completed(self) -> None:
         self.is_scanning = False
-        self.scan_button.configure(state="normal", text="Scan Residues")
-        self.status_label.configure(text=f"Scan Complete · {len(self.scanned_items)} candidate residues found")
+        self.scan_button.configure(state="normal", text="Scan For Leftovers")
+        self.status_label.configure(text=f"Scan Finished · Found {len(self.scanned_items)} leftover items")
 
+        self._update_metrics()
+        self.log_message(f"[Scanner] Found {len(self.scanned_items)} leftover candidates.")
+        self._refresh_table_view()
+
+    def _update_metrics(self) -> None:
         total_bytes = sum(it.size_bytes for it in self.scanned_items)
         mb = total_bytes / (1024 * 1024)
         self.reclaim_label.configure(text=f"{mb:.2f} MB")
@@ -424,14 +423,11 @@ class GhostPurgeApp(ctk.CTk if ctk else object):
         regs = sum(1 for it in self.scanned_items if it.category == "registry")
         caches = sum(1 for it in self.scanned_items if it.category == "cache")
         self.count_summary_label.configure(
-            text=f"{len(self.scanned_items)} Total  ·  {orphans} Orphan Folders  ·  {regs} Registry  ·  {caches} Cache"
+            text=f"{len(self.scanned_items)} Total  ({orphans} Folders, {regs} Registry, {caches} Cache)"
         )
 
-        self.log_message(f"[Scanner] Scan finished: Found {len(self.scanned_items)} items ({mb:.2f} MB total).")
-        self._refresh_table_view()
-
     def _refresh_table_view(self) -> None:
-        """Render the filtered checklist of scan items."""
+        """Render the list with checkboxes AND direct individual Delete buttons on each row."""
         for child in self.scroll_table.winfo_children():
             child.destroy()
 
@@ -454,7 +450,7 @@ class GhostPurgeApp(ctk.CTk if ctk else object):
             )
             row_frame.pack(fill="x", padx=4, pady=1)
 
-            # Checkbox
+            # 1. Checkbox for bulk delete
             var = ctk.BooleanVar(value=(real_idx in self.selected_indices))
             cb = ctk.CTkCheckBox(
                 row_frame,
@@ -465,20 +461,20 @@ class GhostPurgeApp(ctk.CTk if ctk else object):
                 command=lambda i=real_idx, v=var: self._toggle_selection(i, v.get()),
                 variable=var,
             )
-            cb.pack(side="left", padx=(8, 4))
+            cb.pack(side="left", padx=(6, 2))
 
-            # Name and Type
+            # 2. Name and Type
             name_label = ctk.CTkLabel(
                 row_frame,
-                text=f"{item.name} ({item.item_type})",
+                text=f"{item.name}",
                 font=ctk.CTkFont(family="Segoe UI", size=12, weight="bold"),
                 anchor="w",
-                width=220,
+                width=190,
             )
             name_label.pack(side="left", padx=4)
 
-            # Path (truncated)
-            path_display = item.path if len(item.path) < 55 else item.path[:52] + "..."
+            # 3. Path
+            path_display = item.path if len(item.path) < 50 else item.path[:47] + "..."
             path_lbl = ctk.CTkLabel(
                 row_frame,
                 text=path_display,
@@ -486,9 +482,9 @@ class GhostPurgeApp(ctk.CTk if ctk else object):
                 text_color=self.COLOR_TEXT_MUTED,
                 anchor="w",
             )
-            path_lbl.pack(side="left", fill="x", expand=True, padx=8)
+            path_lbl.pack(side="left", fill="x", expand=True, padx=6)
 
-            # Size
+            # 4. Size
             size_mb = item.size_bytes / (1024 * 1024)
             size_text = f"{size_mb:.2f} MB" if size_mb >= 0.1 else f"{item.size_bytes / 1024:.0f} KB"
             size_lbl = ctk.CTkLabel(
@@ -496,22 +492,23 @@ class GhostPurgeApp(ctk.CTk if ctk else object):
                 text=size_text,
                 font=ctk.CTkFont(family="Consolas", size=11),
                 anchor="e",
-                width=80,
+                width=75,
             )
-            size_lbl.pack(side="right", padx=12)
+            size_lbl.pack(side="right", padx=8)
 
-            # Confidence Badge
-            is_high = item.confidence_score >= 80
-            conf_color = self.COLOR_SAFE if is_high else self.COLOR_REVIEW
-            conf_lbl = ctk.CTkLabel(
+            # 5. Direct 1-Click Individual Delete Button
+            del_btn = ctk.CTkButton(
                 row_frame,
-                text=item.confidence_label,
-                font=ctk.CTkFont(family="Segoe UI", size=11),
-                text_color=conf_color,
-                anchor="e",
-                width=110,
+                text="Delete",
+                width=65,
+                height=26,
+                corner_radius=4,
+                fg_color=self.COLOR_DELETE,
+                hover_color=self.COLOR_DELETE_HOVER,
+                font=ctk.CTkFont(family="Segoe UI", size=11, weight="bold"),
+                command=lambda it=item, r_idx=real_idx: self._delete_single_item(it, r_idx),
             )
-            conf_lbl.pack(side="right", padx=8)
+            del_btn.pack(side="right", padx=(4, 8))
 
     def _toggle_selection(self, idx: int, selected: bool) -> None:
         if selected:
@@ -527,35 +524,85 @@ class GhostPurgeApp(ctk.CTk if ctk else object):
         self.selected_indices.clear()
         self._refresh_table_view()
 
+    def _delete_single_item(self, item: ScanResultItem, idx: int) -> None:
+        """Prompt and directly delete an individual file, folder, or registry key."""
+        confirm = messagebox.askyesno(
+            "Confirm Delete",
+            f"Permanently delete this leftover?\n\nTarget: {item.name}\nPath: {item.path}\nSize: {item.size_bytes / (1024*1024):.2f} MB",
+        )
+        if not confirm:
+            return
+
+        self.log_message(f"[Delete] Removing: {item.path}")
+        success, msg = self.safety.permanently_delete(item.path, item.category)
+
+        if success:
+            self.log_message(f"[Deleted] {item.name} removed successfully.")
+            # Remove from items list
+            if idx < len(self.scanned_items) and self.scanned_items[idx] == item:
+                self.scanned_items.pop(idx)
+            else:
+                self.scanned_items = [it for it in self.scanned_items if it != item]
+
+            self.selected_indices = {i for i, it in enumerate(self.scanned_items) if it.confidence_score >= 80}
+            self._update_metrics()
+            self._refresh_table_view()
+            messagebox.showinfo("Success", f"'{item.name}' has been permanently deleted.")
+        else:
+            self.log_message(f"[Failed] Could not delete {item.name}: {msg}")
+            messagebox.showerror("Error", f"Could not delete {item.name}:\n{msg}")
+
     def _confirm_purge_execution(self) -> None:
-        """Prompt confirmation and execute safe deletion or dry run."""
+        """Bulk delete all selected leftover files and folders."""
         if not self.selected_indices:
-            self.log_message("[Warn] No items selected for purge.")
+            messagebox.showwarning("No Items Selected", "Please select at least one item using the checkboxes to delete.")
             return
 
         selected_items = [self.scanned_items[i] for i in self.selected_indices]
-        mode = "DRY-RUN (Simulation Only)" if self.dry_run else "PERMANENT PURGE"
-        self.log_message(f"[Action] Starting {mode} of {len(selected_items)} items...")
+        total_mb = sum(it.size_bytes for it in selected_items) / (1024 * 1024)
 
-        # System Restore Point checkpoint
-        if not self.dry_run and not self.skip_restore_point:
-            self.log_message("[Safety] Triggering Windows System Restore Point creation...")
-            success, msg = self.safety.create_system_restore_point("Pre-GhostPurge-Cleanup")
-            self.log_message(f"[Safety] Restore Point: {msg}")
+        if self.dry_run:
+            messagebox.showinfo(
+                "Dry-Run Mode",
+                f"Simulation Mode is ON.\n\n{len(selected_items)} item(s) selected ({total_mb:.2f} MB).\nTurn off 'Simulation Only' switch in sidebar to delete permanently.",
+            )
+            return
 
-        # Execute items
-        freed = 0
-        deleted = 0
+        # Simple, clear confirmation
+        confirm = messagebox.askyesno(
+            "Confirm Permanent Deletion",
+            f"Are you sure you want to permanently delete {len(selected_items)} selected leftover item(s)?\n\nDisk space to reclaim: {total_mb:.2f} MB\n\nThis cannot be undone.",
+        )
+        if not confirm:
+            return
+
+        self.log_message(f"[Action] Starting deletion of {len(selected_items)} items...")
+
+        freed_bytes = 0
+        deleted_count = 0
+        failed_count = 0
+
         for item in selected_items:
-            b, d, skipped = self.junk_cleaner.clean_target_item(item, dry_run=self.dry_run)
-            freed += b
-            deleted += d
-            if skipped:
-                for s in skipped:
-                    self.log_message(f"  [Skip] {s}")
+            success, msg = self.safety.permanently_delete(item.path, item.category)
+            if success:
+                freed_bytes += item.size_bytes
+                deleted_count += 1
+                self.log_message(f"  [Deleted] {item.name}")
+            else:
+                failed_count += 1
+                self.log_message(f"  [Failed] {item.name}: {msg}")
 
-        self.log_message(f"[Complete] Finished. Freed {freed / (1024*1024):.2f} MB ({deleted} targets processed).")
-        if not self.dry_run:
-            self.scanned_items = [it for idx, it in enumerate(self.scanned_items) if idx not in self.selected_indices]
-            self.selected_indices.clear()
-            self._refresh_table_view()
+        freed_mb = freed_bytes / (1024 * 1024)
+        self.log_message(f"[Finished] Deleted {deleted_count} items ({freed_mb:.2f} MB freed).")
+
+        # Remove deleted items from UI list
+        self.scanned_items = [it for it in self.scanned_items if it not in selected_items]
+        self.selected_indices.clear()
+        self._update_metrics()
+        self._refresh_table_view()
+
+        messagebox.showinfo(
+            "Cleanup Complete",
+            f"Successfully deleted {deleted_count} items!\nFreed {freed_mb:.2f} MB of disk space."
+            + (f"\n\n({failed_count} item(s) were locked by active system processes and skipped)." if failed_count else "")
+        )

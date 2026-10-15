@@ -150,6 +150,21 @@ def run_headless_cli(args: argparse.Namespace) -> None:
         conf_marker = "[SAFE]" if item.confidence_score >= 80 else "[REVIEW]"
         print(f"{conf_marker} {item.name:<32} {item.size_bytes / (1024*1024):>8.2f} MB | {item.path}")
 
+    if getattr(args, "delete", False):
+        print("\n[*] Starting permanent deletion of verified safe leftover items (Confidence >= 80%)...")
+        deleted_count = 0
+        freed = 0
+        for item in all_items:
+            if item.confidence_score >= 80:
+                success, msg = safety.permanently_delete(item.path, item.category)
+                if success:
+                    deleted_count += 1
+                    freed += item.size_bytes
+                    print(f"  [Deleted] {item.name}")
+                else:
+                    print(f"  [Skipped] {item.name}: {msg}")
+        print(f"\n[+] Cleanup complete: Deleted {deleted_count} items, freed {freed / (1024*1024):.2f} MB.")
+
     if args.export:
         import json
         export_data = [
@@ -170,8 +185,9 @@ def run_headless_cli(args: argparse.Namespace) -> None:
 
 def main() -> None:
     """Main application supervisor."""
-    parser = argparse.ArgumentParser(description="GhostPurge - Windows Safe Residual & Orphan Cleaner")
-    parser.add_argument("--dry-run", action="store_true", help="Execute scan in simulation preview mode (no disk changes)")
+    parser = argparse.ArgumentParser(description="Leftover-Cleaner - Windows Safe Residual & Orphan Cleaner")
+    parser.add_argument("--delete", action="store_true", help="Permanently delete safe leftover files and folders")
+    parser.add_argument("--dry-run", action="store_true", default=False, help="Execute scan in simulation preview mode (no disk changes)")
     parser.add_argument("--scan-only", action="store_true", help="Run headless terminal scan and display results")
     parser.add_argument("--no-restore-point", action="store_true", help="Skip System Restore Point creation")
     parser.add_argument("--export", type=str, help="Export scan results to specified JSON file")
