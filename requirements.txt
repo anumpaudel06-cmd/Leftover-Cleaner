@@ -1,0 +1,18 @@
+# GhostPurge - Safe Windows Residual & Orphan Cleaner
+# Python requirements for native Windows 10/11 standalone desktop app
+
+# Modern native Windows 11 Fluent UI framework
+customtkinter>=5.2.2
+
+# Enhanced Windows packaging & single-file executable generator
+pyinstaller>=6.4.0
+
+# Windows API bindings (ctypes is built-in; pywin32 provides deep shell/WMI bindings)
+pywin32>=306
+
+# Enhanced packaging icon & image asset handling
+Pillow>=10.2.0
+
+# Optional unit testing and linting
+pytest>=8.0.0
+ruff>=0.3.0
