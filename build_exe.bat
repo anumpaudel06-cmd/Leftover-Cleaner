@@ -60,7 +60,7 @@ pyinstaller ^
     --onefile ^
     --windowed ^
     --clean ^
-    --name="GhostPurge" ^
+    --name="Leftover-Cleaner" ^
     --manifest="app.manifest" ^
     --add-data="src;src" ^
     --hidden-import="customtkinter" ^
@@ -78,7 +78,7 @@ if %errorlevel% neq 0 (
 
 echo [5/5] Build succeeded!
 echo Output executable created at:
-echo   .\dist\GhostPurge.exe
+echo   .\dist\Leftover-Cleaner.exe
 echo.
 echo Verification:
 echo   - Elevation requirement: embedded via manifest
