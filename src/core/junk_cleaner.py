@@ -75,10 +75,10 @@ class JunkCleaner:
                         if not is_safe:
                             continue
 
-                        if item.is_file(follow_symlinks=False):
+                        if not item.is_symlink() and item.is_file():
                             total_size += item.stat().st_size
                             item_count += 1
-                        elif item.is_dir(follow_symlinks=False):
+                        elif not item.is_symlink() and item.is_dir():
                             total_size += self._get_dir_size(item)
                             item_count += 1
                     except (PermissionError, OSError):
@@ -105,7 +105,7 @@ class JunkCleaner:
         try:
             for p in path_obj.rglob("*"):
                 try:
-                    if p.is_file(follow_symlinks=False):
+                    if not p.is_symlink() and p.is_file():
                         total += p.stat().st_size
                 except (PermissionError, OSError):
                     continue
@@ -139,12 +139,12 @@ class JunkCleaner:
         if path_obj.is_dir() and item.category == "cache":
             for child in path_obj.iterdir():
                 try:
-                    if child.is_file(follow_symlinks=False):
+                    if not child.is_symlink() and child.is_file():
                         size = child.stat().st_size
                         child.unlink(missing_ok=True)
                         bytes_freed += size
                         deleted_count += 1
-                    elif child.is_dir(follow_symlinks=False):
+                    elif not child.is_symlink() and child.is_dir():
                         size = self._get_dir_size(child)
                         shutil.rmtree(child, ignore_errors=False)
                         bytes_freed += size

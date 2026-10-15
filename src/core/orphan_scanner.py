@@ -152,7 +152,7 @@ class OrphanScanner:
         try:
             for entry in path.rglob("*"):
                 try:
-                    if entry.is_file(follow_symlinks=False):
+                    if not entry.is_symlink() and entry.is_file():
                         total += entry.stat().st_size
                 except (PermissionError, FileNotFoundError, OSError):
                     continue

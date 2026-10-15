@@ -143,7 +143,7 @@ class GhostPurgeApp(ctk.CTk if ctk else object):
                 corner_radius=6,
                 fg_color="transparent",
                 text_color=("black", "white"),
-                hover_color=("rgba(0,0,0,0.06)", "rgba(255,255,255,0.08)"),
+                hover_color=("#E5E5E5", "#2D2D2D"),
                 command=lambda t=tab_id: self._select_tab(t),
                 font=ctk.CTkFont(family="Segoe UI", size=13),
             )
@@ -208,8 +208,8 @@ class GhostPurgeApp(ctk.CTk if ctk else object):
         self.scan_button = ctk.CTkButton(
             self.header_frame,
             text="Scan Residues",
-            fg_color=("rgba(0,0,0,0.08)", "rgba(255,255,255,0.1)"),
-            hover_color=("rgba(0,0,0,0.14)", "rgba(255,255,255,0.18)"),
+            fg_color=("#E0E0E0", "#333333"),
+            hover_color=("#D5D5D5", "#3D3D3D"),
             text_color=("black", "white"),
             font=ctk.CTkFont(family="Segoe UI", size=13),
             height=34,
@@ -225,7 +225,7 @@ class GhostPurgeApp(ctk.CTk if ctk else object):
             fg_color=(self.COLOR_CARD_LIGHT, self.COLOR_CARD_DARK),
             corner_radius=8,
             border_width=1,
-            border_color=("rgba(0,0,0,0.08)", "rgba(255,255,255,0.08)"),
+            border_color=("#E0E0E0", "#383838"),
         )
         metrics_container.grid(row=1, column=0, sticky="ew", padx=28, pady=(0, 14))
 
@@ -269,7 +269,7 @@ class GhostPurgeApp(ctk.CTk if ctk else object):
             font=ctk.CTkFont(family="Segoe UI", size=12),
             fg_color="transparent",
             border_width=1,
-            border_color=("rgba(0,0,0,0.2)", "rgba(255,255,255,0.2)"),
+            border_color=("#CCCCCC", "#4A4A4A"),
             text_color=("black", "white"),
             command=self._select_all_safe,
         )
@@ -284,7 +284,7 @@ class GhostPurgeApp(ctk.CTk if ctk else object):
             font=ctk.CTkFont(family="Segoe UI", size=12),
             fg_color="transparent",
             border_width=1,
-            border_color=("rgba(0,0,0,0.2)", "rgba(255,255,255,0.2)"),
+            border_color=("#CCCCCC", "#4A4A4A"),
             text_color=("black", "white"),
             command=self._deselect_all,
         )
@@ -305,7 +305,7 @@ class GhostPurgeApp(ctk.CTk if ctk else object):
             corner_radius=8,
             fg_color=(self.COLOR_CARD_LIGHT, self.COLOR_CARD_DARK),
             border_width=1,
-            border_color=("rgba(0,0,0,0.08)", "rgba(255,255,255,0.08)"),
+            border_color=("#E0E0E0", "#383838"),
         )
         self.scroll_table.grid(row=3, column=0, sticky="nsew", padx=28, pady=(0, 10))
         self.scroll_table.grid_columnconfigure(1, weight=1)
@@ -334,7 +334,7 @@ class GhostPurgeApp(ctk.CTk if ctk else object):
             corner_radius=6,
             fg_color=(self.COLOR_SIDEBAR_LIGHT, self.COLOR_SIDEBAR_DARK),
             border_width=1,
-            border_color=("rgba(0,0,0,0.08)", "rgba(255,255,255,0.08)"),
+            border_color=("#E0E0E0", "#383838"),
         )
         self.drawer_frame.grid(row=4, column=0, sticky="ew", padx=28, pady=(0, 16))
         self.drawer_frame.grid_propagate(False)
@@ -367,7 +367,7 @@ class GhostPurgeApp(ctk.CTk if ctk else object):
     def _highlight_active_nav(self, active_tab: str) -> None:
         for tab_id, btn in self.nav_buttons.items():
             if tab_id == active_tab:
-                btn.configure(fg_color=("rgba(0,0,0,0.08)", "rgba(255,255,255,0.12)"))
+                btn.configure(fg_color=("#E0E0E0", "#363636"))
             else:
                 btn.configure(fg_color="transparent")
 
@@ -449,7 +449,7 @@ class GhostPurgeApp(ctk.CTk if ctk else object):
         for row_i, (real_idx, item) in enumerate(filtered):
             row_frame = ctk.CTkFrame(
                 self.scroll_table,
-                fg_color="transparent" if row_i % 2 == 0 else ("rgba(0,0,0,0.02)", "rgba(255,255,255,0.02)"),
+                fg_color="transparent" if row_i % 2 == 0 else ("#F8F8F8", "#252525"),
                 height=38,
             )
             row_frame.pack(fill="x", padx=4, pady=1)
