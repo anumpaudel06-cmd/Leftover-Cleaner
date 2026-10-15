@@ -62,7 +62,15 @@ pyinstaller ^
     --clean ^
     --name="Leftover-Cleaner" ^
     --manifest="app.manifest" ^
+    --paths="src" ^
     --add-data="src;src" ^
+    --hidden-import="core" ^
+    --hidden-import="core.safety_engine" ^
+    --hidden-import="core.orphan_scanner" ^
+    --hidden-import="core.registry_cleaner" ^
+    --hidden-import="core.junk_cleaner" ^
+    --hidden-import="ui" ^
+    --hidden-import="ui.app_window" ^
     --hidden-import="customtkinter" ^
     --hidden-import="winreg" ^
     --hidden-import="ctypes" ^

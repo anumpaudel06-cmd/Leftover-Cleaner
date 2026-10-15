@@ -16,10 +16,16 @@ try:
 except ImportError:
     ctk = None
 
-from core.safety_engine import SafetyEngine
-from core.orphan_scanner import OrphanScanner, ScanResultItem
-from core.registry_cleaner import RegistryCleaner
-from core.junk_cleaner import JunkCleaner
+try:
+    from core.safety_engine import SafetyEngine
+    from core.orphan_scanner import OrphanScanner, ScanResultItem
+    from core.registry_cleaner import RegistryCleaner
+    from core.junk_cleaner import JunkCleaner
+except ModuleNotFoundError:
+    from src.core.safety_engine import SafetyEngine
+    from src.core.orphan_scanner import OrphanScanner, ScanResultItem
+    from src.core.registry_cleaner import RegistryCleaner
+    from src.core.junk_cleaner import JunkCleaner
 
 
 class GhostPurgeApp(ctk.CTk if ctk else object):

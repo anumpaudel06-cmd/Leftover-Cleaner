@@ -12,13 +12,29 @@ import argparse
 import logging
 from pathlib import Path
 
+# Robust sys.path bootstrapping for both standalone PyInstaller and direct execution
+_CURRENT_DIR = Path(__file__).resolve().parent
+_PROJECT_ROOT = _CURRENT_DIR.parent if _CURRENT_DIR.name == "src" else _CURRENT_DIR
+_SRC_DIR = _CURRENT_DIR if _CURRENT_DIR.name == "src" else (_CURRENT_DIR / "src")
+
+for _p in [str(_SRC_DIR), str(_PROJECT_ROOT)]:
+    if _p not in sys.path:
+        sys.path.insert(0, _p)
+
+# Handle PyInstaller _MEIPASS extraction bundle
+if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
+    _meipass = Path(sys._MEIPASS)
+    for _mp in [str(_meipass), str(_meipass / "src")]:
+        if _mp not in sys.path:
+            sys.path.insert(0, _mp)
+
 # Setup logging
 logging.basicConfig(
     level=logging.INFO,
     format="[%(asctime)s] [%(levelname)s] [%(name)s] %(message)s",
     datefmt="%H:%M:%S",
 )
-logger = logging.getLogger("GhostPurge")
+logger = logging.getLogger("LeftoverCleaner")
 
 
 def is_admin() -> bool:
@@ -88,14 +104,20 @@ def configure_high_dpi() -> None:
 
 
 def run_headless_cli(args: argparse.Namespace) -> None:
-    """Execute GhostPurge in non-interactive / automated command-line mode."""
-    from core.safety_engine import SafetyEngine
-    from core.orphan_scanner import OrphanScanner
-    from core.registry_cleaner import RegistryCleaner
-    from core.junk_cleaner import JunkCleaner
+    """Execute Leftover-Cleaner in non-interactive / automated command-line mode."""
+    try:
+        from core.safety_engine import SafetyEngine
+        from core.orphan_scanner import OrphanScanner
+        from core.registry_cleaner import RegistryCleaner
+        from core.junk_cleaner import JunkCleaner
+    except ModuleNotFoundError:
+        from src.core.safety_engine import SafetyEngine
+        from src.core.orphan_scanner import OrphanScanner
+        from src.core.registry_cleaner import RegistryCleaner
+        from src.core.junk_cleaner import JunkCleaner
 
     print("\n" + "=" * 65)
-    print("   GhostPurge - Headless Windows Residual Cleaner")
+    print("   Leftover-Cleaner - Headless Windows Residual Cleaner")
     print("=" * 65 + "\n")
 
     safety = SafetyEngine()
@@ -169,11 +191,14 @@ def main() -> None:
         run_headless_cli(args)
     else:
         try:
-            from ui.app_window import GhostPurgeApp
+            try:
+                from ui.app_window import GhostPurgeApp
+            except ModuleNotFoundError:
+                from src.ui.app_window import GhostPurgeApp
             app = GhostPurgeApp(dry_run_default=args.dry_run, skip_restore_point=args.no_restore_point)
             app.mainloop()
-        except ImportError as e:
-            logger.warning(f"GUI framework note ({e}); falling back to headless console scanner.")
+        except Exception as e:
+            logger.warning(f"GUI framework note ({e}); running in headless console mode.")
             run_headless_cli(args)
 
 
